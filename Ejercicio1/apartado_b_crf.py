@@ -13,8 +13,9 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+import pandas as pd
 from conllu import parse_incr
-from sklearn_crfsuite import CRF, metrics, scorers
+from sklearn_crfsuite import CRF, metrics
 
 
 class ProcesadorTreeBank(ABC):
@@ -57,19 +58,19 @@ class ProcesadorUDTreeBank(ProcesadorTreeBank):
         """
 
         with open(self.dataset_path / self.annotated_file_relative_path, encoding = 'utf-8', mode = 'r') as annotated_file:
-            words, tags = [], []
-
             for ud_sentence_annotation in parse_incr(annotated_file):
+                words, tags = [], []
+
                 for word in ud_sentence_annotation:
                     words.append(word['form'])
                     tags.append(word['upostag'])
 
-            self.treebank.append((words, tags))
-
+                self.treebank.append((words, tags))
+    
 
 class PreparacionDatos:
     """
-    Clase para implementar lo necesario para preparar conjuntos de datos de cara a entrenamiento/evaluación de modelos CRF (HMM).
+    Clase para implementar lo necesario para preparar datos en una lengua con alfabeto latino.
     """
 
 
@@ -81,71 +82,11 @@ class PreparacionDatos:
             treebank (List[Tuple[List[str], List[str]]]): el treebank que conforma el conjunto de datos a emplear.
         """
         self.treebank = treebank
+        self.oraciones = list()
 
 
-    @abstractmethod
-    def _extraer_caracteristicas_de_palabra(self, oracion : str, indice_palabra : int) -> Dict[str, Any]:
-        """
-        Método para extraer características de un conjunto de datos dado.
-
-        Args:
-            oracion (str): la oración a la que pertenece la palabra cuyas características se van a extraer.
-            indice_palabra (int): el índice que tiene la palabra en la oración.
-
-        Returns:
-            El diccionario de características con las que entrenar el modelo. 
-        """
-
-
-    def _procesar_treebank(self, treebank : List[Tuple[List[str], List[str]]]) -> Tuple[List[Dict[str, Any]], List[str]]:
-        """
-        Método para procesar un treebank generando un conjunto de datos hábil para entrenamiento/evaluación.
-
-        Args:
-            treebank (List[Tuple[List[str], List[str]]]): el treebank (o subconjunto del mismo) que se quiere procesar.
-
-        Returns:
-            Una tupla (X, y) con datos hábiles para entrenamiento y/o evaluación de modelos.
-        """
-        X, y = [], []
-
-        for oracion, etiquetas in treebank:
-            caracteristicas_oracion, etiquetas_oracion = [], []
-
-            for indice_palabra in range(len(oracion)):
-                caracteristicas_oracion.append(self._extraer_caracteristicas_de_palabra(oracion, indice_palabra))
-                etiquetas_oracion.append(etiquetas[indice_palabra])
-
-            X.append(caracteristicas_oracion)
-            y.append(etiquetas_oracion)
-
-        return X, y
-
-
-    def preparar_datos(self, pct_entrenamiento : float = 0.8) -> Tuple[List[Dict[str, Any]], List[str], List[Dict[str, Any]], List[str]]:
-        """
-        Método para preparar los datos de cara al entrenamiento/evaluación del modelo.
-
-        Args:
-            pct_entrenamiento (float): el porcentaje de datos que se van a emplear en el entrenamiento del modelo.
-
-        Returns:
-            Una tupla (X_train, y_train, X_test, y_test) con los datos particionados para realizar entrenamiento y evaluación del modelo.
-        """
-        random.shuffle(self.treebank)
-        treebank_entrenamiento = self.treebank[:round(len(self.treebank) * pct_entrenamiento)]
-        treebank_evaluacion = self.treebank[round(len(self.treebank) * pct_entrenamiento):]
-
-        return *self._procesar_treebank(treebank_entrenamiento), *self._procesar_treebank(treebank_evaluacion)
-
-
-class PreparacionDatosAlfabetoLatino(PreparacionDatos):
-    """
-    Clase para implementar lo necesario para preparar datos en una lengua con alfabeto latino.
-    """
-
-
-    def _extraer_caracteristicas_de_palabra(self, oracion : str, indice_palabra : int) -> Dict[str, Any]:
+    @staticmethod
+    def _extraer_caracteristicas_de_palabra(oracion : str, indice_palabra : int) -> Dict[str, Any]:
         """
         Método para extraer características de un conjunto de datos dado.
 
@@ -180,10 +121,82 @@ class PreparacionDatosAlfabetoLatino(PreparacionDatos):
     }
 
 
+    def _procesar_treebank(self, treebank : List[Tuple[List[str], List[str]]]) -> Tuple[List[Dict[str, Any]], List[str]]:
+        """
+        Método para procesar un treebank generando un conjunto de datos hábil para entrenamiento/evaluación.
+
+        Args:
+            treebank (List[Tuple[List[str], List[str]]]): el treebank (o subconjunto del mismo) que se quiere procesar.
+
+        Returns:
+            Una tupla (X, y) con datos hábiles para entrenamiento y/o evaluación de modelos.
+        """
+        X, y = [], []
+
+        for oracion, etiquetas in treebank:
+            self.oraciones.append(oracion)
+            caracteristicas_oracion, etiquetas_oracion = [], []
+
+            for indice_palabra in range(len(oracion)):
+                caracteristicas_oracion.append(PreparacionDatos._extraer_caracteristicas_de_palabra(oracion, indice_palabra))
+                etiquetas_oracion.append(etiquetas[indice_palabra])
+
+            X.append(caracteristicas_oracion)
+            y.append(etiquetas_oracion)
+
+        return X, y
+
+
+    def preparar_datos(self, pct_entrenamiento : float = 0.8) -> Tuple[List[Dict[str, Any]], List[str], List[Dict[str, Any]], List[str]]:
+        """
+        Método para preparar los datos de cara al entrenamiento/evaluación del modelo.
+
+        Args:
+            pct_entrenamiento (float): el porcentaje de datos que se van a emplear en el entrenamiento del modelo.
+
+        Returns:
+            Una tupla (X_train, y_train, X_test, y_test) con los datos particionados para realizar entrenamiento y evaluación del modelo.
+        """
+        random.shuffle(self.treebank)
+        treebank_entrenamiento = self.treebank[:round(len(self.treebank) * pct_entrenamiento)]
+        treebank_evaluacion = self.treebank[round(len(self.treebank) * pct_entrenamiento):]
+
+        return *self._procesar_treebank(treebank_entrenamiento), *self._procesar_treebank(treebank_evaluacion)
+
+
+    def almacenar_oraciones(self, ruta_archivo_salida : str | Path, num_palabras : int) -> None:
+        """
+        Método para almacenar las oraciones generando un texto de entrada para el modelo de N palabras.
+
+        Args:
+            ruta_archivo_salida (str | Path): la ruta del archivo donde se va a almacenar el texto.
+            num_palabras (int): el número de palabras del texto a generar.
+        """
+        palabras_escritas = 0
+
+        with open(ruta_archivo_salida, encoding = 'utf-8', mode = 'w') as archivo_salida:
+            for oracion in self.oraciones:
+                palabras_escritas += len(oracion)
+                archivo_salida.write(f'{" ".join(oracion)}\n')
+
+                if palabras_escritas > num_palabras:
+                    break
+
+
 if __name__ == '__main__':
 
+    random.seed(0)
+    resultados = []
+
+    # Se recomienda activar los idiomas UNO A UNO y no todos a la vez para evitar problemas en la exportación de resultados.
     treebanks_por_lenguaje = {
         'Inglés' : 'UD_English-GUM/en_gum-ud-train.conllu',
+        # 'Español' : 'UD_Spanish-GSD/es_gsd-ud-train.conllu',
+        # 'Italiano' : 'UD_Italian-ISDT/it_isdt-ud-train.conllu',
+        # 'Francés' : 'UD_French-GSD/fr_gsd-ud-train.conllu',
+        # 'Chino' : 'UD_Chinese-GSD/zh_gsd-ud-train.conllu',
+        # 'Japonés' : 'UD_Japanese-GSD/ja_gsd-ud-train.conllu',
+        #'Ruso' : 'UD_Russian-GSD/ru_gsd-ud-train.conllu',
     }
 
     for idioma, ruta_treebank in treebanks_por_lenguaje.items():
@@ -192,13 +205,11 @@ if __name__ == '__main__':
         procesador_ud.procesar_treebank()
 
         # Paso 2: Creamos conjunto de datos de entrenamiento/evaluación
-        match idioma:
-            case 'Inglés' | 'Español':
-                generador_datos = PreparacionDatosAlfabetoLatino(procesador_ud.treebank)
-            case _:
-                raise RuntimeError('Idioma no reconocido por el script de entrenamiento de PoS taggers CRF')
-
+        generador_datos = PreparacionDatos(procesador_ud.treebank)
         X_train, y_train, X_test, y_test = generador_datos.preparar_datos()
+
+        (ruta_oraciones := Path(f'assets/apartado_b/')).mkdir(parents = True, exist_ok = True)
+        generador_datos.almacenar_oraciones(ruta_oraciones/ f'ENTRADA_RAW_{idioma}.txt', 10000)
 
         # Paso 3: Creamos el modelo CRF (derivado de HMM). El crédito de este modelo es del autor del notebook mostrado al inicio de este script
         modelo = CRF(algorithm = 'lbfgs', c1 = 0.01, c2 = 0.1, max_iterations = 100, all_possible_transitions = True)
@@ -209,3 +220,24 @@ if __name__ == '__main__':
         print(f'Tiempo de entrenamiento [{idioma, ruta_treebank}]: ', round(tiempo_fin - tiempo_inicio, 4))
 
         # Paso 4: Evaluamos el modelo
+        y_pred_train = modelo.predict(X_train)
+        f1_train = metrics.flat_f1_score(y_train, y_pred_train, average = 'weighted', labels = modelo.classes_)
+        print(f'[{idioma}] F1 (Entrenamiento): ', f1_train)
+
+        y_pred_test = modelo.predict(X_test)
+        f1_test = metrics.flat_f1_score(y_test, y_pred_test, average = 'weighted', labels = modelo.classes_)
+        print(f'[{idioma}] F1 (Evaluación): ', f1_test)
+
+        resultados.append(('CRF', idioma, tiempo_fin - tiempo_inicio, f1_train, f1_test))
+        pd.DataFrame(resultados, columns = ['Modelo', 'Idioma', 'Tiempo de entrenamiento', 'F1 (Entrenamiento)', 'F1 (Evaluación)']).to_csv(f'out/apartado_b/crf_{idioma}.csv', index = False)
+
+        # Paso 5: Generación de resultados RAW de las oraciones guardadas
+        with open(ruta_oraciones/ f'ENTRADA_RAW_{idioma}.txt', encoding = 'utf-8', mode = 'r') as archivo_entrada:
+            oraciones = archivo_entrada.readlines()
+
+        with open(f'out/apartado_b/SALIDA_RAW_{idioma}.txt', encoding = 'utf-8', mode = 'w') as archivo_salida:
+            for oracion in oraciones:
+                caracteristicas_oracion = [PreparacionDatos._extraer_caracteristicas_de_palabra(oracion.split(), indice_palabra) for indice_palabra in range(len(oracion.split()))]
+
+                salida_10k_palabras = modelo.predict_single(caracteristicas_oracion)
+                archivo_salida.write(f'{salida_10k_palabras}\n')

@@ -111,3 +111,58 @@ Considerando la salida mostrada por el etiquetador, observamos que se mantiene e
 ## Apartado b
 
 ToDo
+
+Muy inspirado en [este cuaderno de Google Collaboratory](https://colab.research.google.com/drive/1d7LO_0665DYw6DrVJXXautJAJzHHqYOm), donde el usuario realiza unos entrenamientos algo más simples, pero que sin duda sirven para encontrar recursos (como Treebanks) que se han empleado para resolver este ejercicio.
+
+Para este apartado b del ejercicio se propone el empleo de 2 modelos diferentes para realizar una comparativa real de dos modelos diferentes:
+
+- Modelo I: ToDo
+
+- Modelo II: ToDo
+
+Por otro lado, se propone el empleo de 7 idiomas diferentes, incluyendo lenguas más sencillas como el inglés, y otras mucho más complejas e incluso con alfabetos diferentes como el ruso, el chino o el japonés. Todo ello se propone para evaluar el rendimiento de los modelos entrenados para cada idioma, de forma que podamos ver en qué idiomas resulta más sencillo o complejo realizar la tarea del PoS tagging.
+
+**Español**: El texto a etiquetar se encuentra en este [enlace](https://universaldependencies.org/treebanks/es_gsd/index.html). Básicamente, se trata de oraciones del Universal Dependencies Treebank de Español (GSD), de las cuáles un proceso automatizado diseñado en Python (ver código) tomó frases hasta completar 10000 palabras (de forma que no se corta ninguna frase y se alcanza siempre la cantidad de palabras deseada).
+
+**Inglés**: Se empleó el mismo treebank, pero en este caso para la lengua inglesa. El recurso se encuentra completamente disponible en este [enlace](https://universaldependencies.org/treebanks/en_gum/index.html).
+
+**Italiano**: Se empleó el mismo treebank, pero en este caso para el italiano. Del mismo modo, el recurso se encuentra completamente disponible en este [enlace](https://universaldependencies.org/treebanks/it_isdt/index.html).
+
+**Francés**: Se empleó el mismo treebank, pero en este caso para el francés. El recurso se encuentra disponible en este [enlace](https://universaldependencies.org/treebanks/fr_gsd/index.html).
+
+**Chino**: Se empleó el mismo treebank, pero en este caso para el chino. El recurso se encuentra disponible en este [enlace](https://universaldependencies.org/treebanks/zh_gsd/index.html).
+
+**Japonés**: Se empleó el mismo treebank, pero en este caso para el japonés. El recurso se encuentra disponible en este [enlace](https://universaldependencies.org/treebanks/ja_gsd/index.html).
+
+**Ruso**: Se empleó el mismo treebank, pero en este caso para el ruso. El recurso se encuentra disponible en este [enlace](https://universaldependencies.org/treebanks/ru_gsd/index.html).
+
+
+Si bien los enlaces proporcionados emplean la versión más reciente del treebank (2.14), los resultados mostrados emplean una versión algo anterior (2.5), esencialmente debido a la inmediatez de la descarga, pues se encontró un enlace disponible para descargar el treebank completo (para todos los idiomas disponibles en dicha versión) accesible en [este enlace](https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11234/1-3105/ud-treebanks-v2.5.tgz), motivo por el cuál se emplearon esta versión de los treebanks y no la más reciente.
+
+### Etiquetador 1: CRF
+
+--> Analizar datos de entrenamiento
+--> Analizar entrada
+--> Analizar salida
+
+A continuación se muestra un ejemplo de la salida del modelo para las 3 primeras oraciones del idioma español empleadas para la evaluación del modelo:
+
+```python
+['AUX', 'VERB', 'ADP', 'PROPN', 'PUNCT', 'PROPN', 'CCONJ', 'PROPN', 'PROPN', 'PUNCT']
+['DET', 'NOUN', 'ADJ', 'ADP', 'PROPN', 'VERB', 'DET', 'NOUN', 'ADP', 'NUM', 'NOUN', 'SYM', 'PUNCT']
+['PRON', 'AUX', 'VERB', 'DET', 'NOUN', 'ADP', 'NOUN', 'ADV', 'ADJ', 'CCONJ', 'NOUN', 'VERB', 'ADP', 'NOUN', 'ADP', 'DET', 'PROPN', 'PUNCT', 'ADV', 'DET', 'NOUN', 'PUNCT', 'PROPN', 'PUNCT', 'PUNCT']
+```
+
+Dicho resultado coincide correctamente con las frases originales de las que se partía, por lo que el resultado de la métrica F1 tiene sentido (el modelo acierta la categoría correcta con un 95% de probabilidad para cada palabra - estas métricas se muestran en los siguientes párrafos):
+
+```
+- Es mencionada en Hákonarmál , Völuspá y in Darraðarljóð .
+- El término municipal de Linares abarca una extensión de 197'92 km ² .
+- Se ha encontrado un edificio de planta casi cuadrada y habitaciones dispuestas en torno a un impluvium , quizá un hospital ( valetudinarium ) .
+```
+
+Nótese que la entrega realizada para la práctica dispone de carpetas por idioma donde cada idioma tiene una entrada en crudo que fue proporcionada al modelo, y cuya salida (en crudo) fue almacenada para mostrar el resultado que se muestra en dicha carpeta.
+
+En su totalidad, el rendimiento del modelo CRF entrenado para los diferentes idiomas permite realizar la siguiente comparativa, mostrando también la dificultad intrínseca para la realización de PoS tagging en los diferentes idiomas:
+
+--> Analizar métricas

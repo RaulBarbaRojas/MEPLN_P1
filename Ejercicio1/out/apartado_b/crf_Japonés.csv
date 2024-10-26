@@ -1,0 +1,2 @@
+Modelo,Idioma,Tiempo de entrenamiento,F1 (Entrenamiento),F1 (Evaluación)
+CRF,Japonés,12.452739499999552,0.9932331324252028,0.9585054142837516

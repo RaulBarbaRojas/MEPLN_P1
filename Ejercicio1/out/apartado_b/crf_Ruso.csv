@@ -1,0 +1,2 @@
+Modelo,Idioma,Tiempo de entrenamiento,F1 (Entrenamiento),F1 (Evaluación)
+CRF,Ruso,5.957245799999328,0.9947851119810082,0.9545232227869451

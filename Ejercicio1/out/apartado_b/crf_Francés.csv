@@ -1,0 +1,2 @@
+Modelo,Idioma,Tiempo de entrenamiento,F1 (Entrenamiento),F1 (Evaluación)
+CRF,Francés,33.84247629999936,0.9925564902286534,0.9726080962716084
